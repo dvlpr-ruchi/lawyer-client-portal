@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Scale, ArrowLeft, Phone, Mail } from "lucide-react";
+import api from "../../network/api";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -12,32 +13,51 @@ const Login = () => {
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  // ================= EMAIL LOGIN =================
+  const handleLogin = async (e) => {
+    e.preventDefault();
+
+    if (loginMethod !== "email") return;
+
+    if (!email || !password) {
+      setError("Email and password are required");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await api.post("/app/v1/user/auth/login", {
+        email,
+        password,
+      });
+
+      if (res.data.success) {
+        navigate("/dashboard");
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ================= OTP UI ONLY (NO API YET) =================
   const handleSendOtp = () => {
     setOtpSent(true);
   };
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-
-    console.log("Login data:", { loginMethod, phone, email, password, otp });
-
-    // if (loginMethod === "phone") {
-    //   if (!otpSent || otp.length !== 6) return;
-    //   navigate("/dashboard");
-    //   return;
-    // }
-
-    // if (!email || !password) return;
-    // navigate("/dashboard");
-  };
-
   return (
     <div className="min-h-screen flex bg-gray-100">
-      {/* Left */}
+      {/* LEFT */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
 
-          <Link to="/" className="flex items-center gap-2 text-gray-500 hover:text-black mb-8">
+          <Link to="/" className="flex items-center gap-2 text-gray-500 mb-8">
             <ArrowLeft size={16} /> Back to Home
           </Link>
 
@@ -53,102 +73,78 @@ const Login = () => {
           <h1 className="text-3xl font-serif font-bold mb-2">Welcome back</h1>
           <p className="text-gray-500 mb-8">Login to access your account</p>
 
-          {/* Toggle */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+
+          {/* TOGGLE */}
           <div className="flex bg-gray-200 rounded-xl p-1 mb-8">
             <button
               type="button"
               onClick={() => {
                 setLoginMethod("phone");
-                setOtpSent(false);
-                setOtp("");
+                setError("");
               }}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-medium transition
-                ${loginMethod === "phone" ? "bg-white shadow" : "text-gray-500"}`}
+              className={`flex-1 py-3 rounded-lg ${
+                loginMethod === "phone" ? "bg-white shadow" : "text-gray-500"
+              }`}
             >
-              <Phone size={16} /> Phone
+              <Phone size={16} className="inline mr-2" /> Phone
             </button>
 
             <button
               type="button"
               onClick={() => {
                 setLoginMethod("email");
-                setOtpSent(false);
-                setOtp("");
+                setError("");
               }}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-medium transition
-                ${loginMethod === "email" ? "bg-white shadow" : "text-gray-500"}`}
+              className={`flex-1 py-3 rounded-lg ${
+                loginMethod === "email" ? "bg-white shadow" : "text-gray-500"
+              }`}
             >
-              <Mail size={16} /> Email
+              <Mail size={16} className="inline mr-2" /> Email
             </button>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
 
+            {/* PHONE LOGIN (UI ONLY) */}
             {loginMethod === "phone" ? (
               <>
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Mobile Number
-                  </label>
-                  <div className="flex gap-2">
-                    <div className="px-4 flex items-center border rounded-lg bg-gray-100">
-                      +91
-                    </div>
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) =>
-                        setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
-                      }
-                      className="flex-1 border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-600"
-                      placeholder="Enter mobile number"
-                    />
-                  </div>
-                </div>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) =>
+                    setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
+                  }
+                  className="w-full border rounded-lg px-4 py-3"
+                  placeholder="Enter mobile number"
+                />
 
                 {!otpSent ? (
                   <button
                     type="button"
                     onClick={handleSendOtp}
-                    disabled={phone.length !== 10}
-                    className="w-full py-3 rounded-lg bg-black text-white hover:bg-gray-800 disabled:opacity-50"
+                    className="w-full bg-black text-white py-3 rounded-lg"
                   >
                     Send OTP
                   </button>
                 ) : (
                   <>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">
-                        Enter OTP
-                      </label>
-                      <input
-                        type="text"
-                        value={otp}
-                        onChange={(e) =>
-                          setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
-                        }
-                        className="w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-600"
-                        placeholder="6-digit OTP"
-                      />
-                      <p className="text-sm text-gray-500 mt-2">
-                        OTP sent to +91 {phone}{" "}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOtpSent(false);
-                            setOtp("");
-                          }}
-                          className="text-yellow-600 hover:underline"
-                        >
-                          Change
-                        </button>
-                      </p>
-                    </div>
-
+                    <input
+                      type="text"
+                      value={otp}
+                      onChange={(e) =>
+                        setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                      }
+                      className="w-full border rounded-lg px-4 py-3"
+                      placeholder="Enter OTP"
+                    />
                     <button
                       type="submit"
-                      disabled={otp.length !== 6}
-                      className="w-full py-3 rounded-lg bg-black text-white hover:bg-gray-800 disabled:opacity-50"
+                      className="w-full bg-black text-white py-3 rounded-lg"
                     >
                       Verify & Login
                     </button>
@@ -157,48 +153,48 @@ const Login = () => {
               </>
             ) : (
               <>
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-600"
-                    placeholder="Enter email"
-                  />
-                </div>
+                {/* EMAIL */}
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full border rounded-lg px-4 py-3"
+                  placeholder="Enter email"
+                />
 
+                {/* PASSWORD */}
                 <div>
-                  <div className="flex justify-between mb-2">
-                    <label className="text-sm font-medium">Password</label>
-                    <Link to="/forgot-password" className="text-sm text-yellow-600 hover:underline">
-                      Forgot password?
-                    </Link>
-                  </div>
                   <input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-600"
+                    className="w-full border rounded-lg px-4 py-3"
                     placeholder="Enter password"
                   />
+                  <div className="text-right mt-2">
+                    <Link
+                      to="/forgot-password"
+                      className="text-sm text-yellow-600 hover:text-yellow-700 font-medium"
+                    >
+                      Forgot Password?
+                    </Link>
+                  </div>
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-3 rounded-lg bg-black text-white hover:bg-gray-800"
+                  disabled={loading}
+                  className="w-full bg-black text-white py-3 rounded-lg"
                 >
-                  Login
+                  {loading ? "Logging in..." : "Login"}
                 </button>
               </>
             )}
           </form>
 
           <p className="text-center text-gray-500 mt-8">
-            Don’t have an account?{" "}
-            <Link to="/signup" className="text-yellow-600 font-semibold hover:underline">
+            Don't have an account?{" "}
+            <Link to="/signup" className="text-yellow-600 font-semibold">
               Sign up
             </Link>
           </p>
@@ -206,14 +202,14 @@ const Login = () => {
         </div>
       </div>
 
-      {/* Right Side */}
+      {/* RIGHT */}
       <div className="hidden lg:flex lg:w-1/2 bg-black text-white items-center justify-center p-12 text-center">
-        <div className="max-w-md">
+        <div>
           <h2 className="text-3xl font-serif font-bold mb-4">
-            Access Legal Help Anytime, Anywhere
+            Access Legal Help Anytime
           </h2>
           <p className="text-gray-300">
-            Connect with verified lawyers across India and get expert legal advice from home.
+            Connect with verified lawyers across India.
           </p>
         </div>
       </div>

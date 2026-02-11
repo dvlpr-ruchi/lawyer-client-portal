@@ -1,58 +1,93 @@
-// 3. ForgotPassword.jsx
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Scale, ArrowLeft, Phone, Lock, CheckCircle } from "lucide-react";
+import { Scale, ArrowLeft, Mail, Lock } from "lucide-react";
+import api from "../../network/api"
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1); // 1: Enter Phone, 2: Verify OTP, 3: Reset Password
-  const [phone, setPhone] = useState("");
+
+  const [step, setStep] = useState(1);
+  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // STEP 1: SEND OTP
   const handleSendOtp = async (e) => {
     e.preventDefault();
-    if (phone.length !== 10) {
-      alert("Please enter a valid 10-digit mobile number");
+
+    if (!email || !/\S+@\S+\.\S+/.test(email)) {
+      alert("Enter a valid email address");
       return;
     }
-    setLoading(true);
-    setTimeout(() => {
+
+    try {
+      setLoading(true);
+      const res = await api.post("/app/v1/user/auth/forgot", { email });
+      alert(res.data.message || "OTP sent to email");
       setStep(2);
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to send OTP");
+    } finally {
       setLoading(false);
-      alert("OTP sent to " + phone);
-    }, 1000);
+    }
   };
 
-  const handleVerifyOtp = (e) => {
+  // STEP 2: VERIFY OTP
+  const handleVerifyOtp = async (e) => {
     e.preventDefault();
+
     if (otp.length !== 6) {
-      alert("Please enter a valid 6-digit OTP");
+      alert("Enter a valid 6-digit OTP");
       return;
     }
-    setStep(3);
+
+    try {
+      setLoading(true);
+      const res = await api.post("/app/v1/user/auth/forgot/verify", { email, otp });
+      alert(res.data.message || "OTP verified");
+      setStep(3);
+    } catch (err) {
+      alert(err.response?.data?.message || "Invalid or expired OTP");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleResetPassword = (e) => {
+  // STEP 3: RESET PASSWORD
+  const handleResetPassword = async (e) => {
     e.preventDefault();
+
     if (newPassword.length < 6) {
       alert("Password must be at least 6 characters");
       return;
     }
+
     if (newPassword !== confirmPassword) {
       alert("Passwords do not match");
       return;
     }
-    console.log("Password reset for:", phone);
-    alert("Password reset successful!");
-    navigate("/login");
+
+    try {
+      setLoading(true);
+      const res = await api.post("/app/v1/user/auth/forgot/pass", {
+        email,
+        password: newPassword,
+      });
+
+      alert(res.data.message || "Password updated successfully");
+      navigate("/login");
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to reset password");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex bg-gray-50">
-      {/* Left Side - Hero */}
+      {/* LEFT */}
       <div className="hidden lg:flex w-1/2 bg-black text-white items-center justify-center p-12">
         <div className="max-w-md">
           <div className="flex items-center gap-3 mb-8">
@@ -67,204 +102,128 @@ const ForgotPassword = () => {
           <h2 className="text-3xl font-serif font-bold mb-4">
             Reset Your Password
           </h2>
-          <p className="text-gray-300 mb-8">
-            Don't worry! It happens. We'll help you reset your password quickly and securely.
+          <p className="text-gray-300">
+            Secure OTP-based password recovery
           </p>
-
-          <div className="bg-yellow-600/10 border border-yellow-600/30 rounded-xl p-6">
-            <p className="text-yellow-500 font-semibold mb-4">Steps to Reset</p>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step >= 1 ? 'bg-yellow-600 text-black' : 'bg-gray-700 text-gray-400'}`}>
-                  1
-                </div>
-                <span className="text-sm text-gray-300">Enter mobile number</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step >= 2 ? 'bg-yellow-600 text-black' : 'bg-gray-700 text-gray-400'}`}>
-                  2
-                </div>
-                <span className="text-sm text-gray-300">Verify OTP</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step >= 3 ? 'bg-yellow-600 text-black' : 'bg-gray-700 text-gray-400'}`}>
-                  3
-                </div>
-                <span className="text-sm text-gray-300">Create new password</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Right Side - Form */}
+      {/* RIGHT */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
-        <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <Link to="/login" className="inline-flex items-center gap-2 text-gray-500 hover:text-black mb-6 transition-colors">
-              <ArrowLeft size={16} />
-              <span className="text-sm font-medium">Back to Login</span>
-            </Link>
+        <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl">
 
-            <div className="lg:hidden flex items-center gap-2 mb-6">
-              <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center">
-                <Scale className="text-yellow-600 w-5 h-5" />
+          <Link
+            to="/login"
+            className="flex items-center gap-2 text-gray-500 hover:text-black mb-6"
+          >
+            <ArrowLeft size={16} />
+            Back to Login
+          </Link>
+
+          {/* STEP 1 */}
+          {step === 1 && (
+            <form onSubmit={handleSendOtp} className="space-y-5">
+              <h1 className="text-3xl font-bold font-serif">
+                Forgot Password?
+              </h1>
+              <p className="text-gray-500">
+                Enter your registered email address
+              </p>
+
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 text-gray-400" size={20} />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-10 px-4 py-3 border rounded-xl"
+                  placeholder="Email address"
+                  required
+                />
               </div>
-              <span className="text-xl font-bold font-serif">
-                Legal<span className="text-yellow-600">Ease</span>
-              </span>
-            </div>
 
-            {/* Step 1: Enter Phone Number */}
-            {step === 1 && (
-              <>
-                <h1 className="text-3xl font-serif font-bold mb-2">
-                  Forgot Password?
-                </h1>
-                <p className="text-gray-500 mb-8">
-                  Enter your registered mobile number to receive OTP
-                </p>
+              <button
+                disabled={loading}
+                className="w-full py-3 bg-black text-white rounded-xl hover:bg-gray-800 disabled:opacity-50"
+              >
+                {loading ? "Sending OTP..." : "Send OTP"}
+              </button>
+            </form>
+          )}
 
-                <form onSubmit={handleSendOtp} className="space-y-5">
-                  <div>
-                    <label className="block text-sm font-semibold mb-2 text-gray-700">
-                      Mobile Number
-                    </label>
-                    <div className="flex gap-2">
-                      <div className="px-4 py-3 border border-gray-300 rounded-xl bg-gray-50 font-semibold text-gray-700">
-                        +91
-                      </div>
-                      <input
-                        type="tel"
-                        maxLength={10}
-                        className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all"
-                        placeholder="Enter mobile number"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                        required
-                      />
-                    </div>
-                  </div>
+          {/* STEP 2 */}
+          {step === 2 && (
+            <form onSubmit={handleVerifyOtp} className="space-y-5">
+              <h1 className="text-3xl font-bold font-serif">
+                Verify OTP
+              </h1>
+              <p className="text-gray-500">
+                OTP sent to {email}
+              </p>
 
-                  <button
-                    type="submit"
-                    className="w-full py-3 bg-black text-white rounded-xl hover:bg-gray-800 flex items-center justify-center gap-2 font-semibold transition-all disabled:opacity-50"
-                    disabled={phone.length !== 10 || loading}
-                  >
-                    <Phone size={18} />
-                    {loading ? "Sending..." : "Send OTP"}
-                  </button>
-                </form>
-              </>
-            )}
+              <input
+                type="text"
+                maxLength={6}
+                value={otp}
+                onChange={(e) =>
+                  setOtp(e.target.value.replace(/\D/g, ""))
+                }
+                className="w-full text-center text-2xl py-3 border rounded-xl"
+                placeholder="000000"
+                required
+              />
 
-            {/* Step 2: Verify OTP */}
-            {step === 2 && (
-              <>
-                <h1 className="text-3xl font-serif font-bold mb-2">
-                  Verify OTP
-                </h1>
-                <p className="text-gray-500 mb-8">
-                  Enter the 6-digit code sent to +91 {phone}
-                </p>
+              <button
+                disabled={loading}
+                className="w-full py-3 bg-black text-white rounded-xl hover:bg-gray-800 disabled:opacity-50"
+              >
+                {loading ? "Verifying..." : "Verify OTP"}
+              </button>
+            </form>
+          )}
 
-                <form onSubmit={handleVerifyOtp} className="space-y-5">
-                  <div>
-                    <label className="block text-sm font-semibold mb-2 text-gray-700">
-                      Enter OTP
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={6}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all text-center text-2xl font-bold tracking-widest"
-                      placeholder="000000"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      required
-                    />
-                    <div className="flex items-center justify-between mt-2">
-                      <p className="text-xs text-gray-500">Didn't receive code?</p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setStep(1);
-                          setOtp("");
-                        }}
-                        className="text-xs text-yellow-600 font-semibold hover:underline"
-                      >
-                        Resend OTP
-                      </button>
-                    </div>
-                  </div>
+          {/* STEP 3 */}
+          {step === 3 && (
+            <form onSubmit={handleResetPassword} className="space-y-5">
+              <h1 className="text-3xl font-bold font-serif">
+                New Password
+              </h1>
 
-                  <button
-                    type="submit"
-                    className="w-full py-3 bg-black text-white rounded-xl hover:bg-gray-800 font-semibold transition-all disabled:opacity-50"
-                    disabled={otp.length !== 6}
-                  >
-                    Verify OTP
-                  </button>
-                </form>
-              </>
-            )}
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 text-gray-400" size={20} />
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full pl-10 py-3 border rounded-xl"
+                  placeholder="New password"
+                  required
+                />
+              </div>
 
-            {/* Step 3: Reset Password */}
-            {step === 3 && (
-              <>
-                <h1 className="text-3xl font-serif font-bold mb-2">
-                  Create New Password
-                </h1>
-                <p className="text-gray-500 mb-8">
-                  Choose a strong password for your account
-                </p>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 text-gray-400" size={20} />
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) =>
+                    setConfirmPassword(e.target.value)
+                  }
+                  className="w-full pl-10 py-3 border rounded-xl"
+                  placeholder="Confirm password"
+                  required
+                />
+              </div>
 
-                <form onSubmit={handleResetPassword} className="space-y-5">
-                  <div>
-                    <label className="block text-sm font-semibold mb-2 text-gray-700">
-                      New Password
-                    </label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
-                      <input
-                        type="password"
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all"
-                        placeholder="Enter new password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        required
-                        minLength={6}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
-                  </div>
+              <button
+                disabled={loading}
+                className="w-full py-3 bg-black text-white rounded-xl hover:bg-gray-800 disabled:opacity-50"
+              >
+                {loading ? "Resetting..." : "Reset Password"}
+              </button>
+            </form>
+          )}
 
-                  <div>
-                    <label className="block text-sm font-semibold mb-2 text-gray-700">
-                      Confirm Password
-                    </label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
-                      <input
-                        type="password"
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-600 focus:border-transparent transition-all"
-                        placeholder="Re-enter password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full py-3 bg-black text-white rounded-xl hover:bg-gray-800 font-semibold transition-all"
-                  >
-                    Reset Password
-                  </button>
-                </form>
-              </>
-            )}
-          </div>
         </div>
       </div>
     </div>
