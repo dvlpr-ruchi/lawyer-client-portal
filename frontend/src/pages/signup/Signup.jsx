@@ -32,7 +32,7 @@ const Signup = () => {
     setSuccess("");
 
     try {
-      const res = await api.post("/app/v1/user/auth/register", {
+      const res = await api.post("/api/v1/user/auth/register", {
         email: formData.email,
       });
 
@@ -60,7 +60,7 @@ const Signup = () => {
     setError("");
 
     try {
-      const res = await api.post("/app/v1/user/auth/verify-otp", {
+      const res = await api.post("/api/v1/user/auth/verify-otp", {
         email: formData.email,
         otp,
         fullName: formData.fullName,
@@ -126,7 +126,10 @@ const Signup = () => {
             <div>
               <label className="text-sm font-medium">Email *</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
+                <Mail
+                  className="absolute left-3 top-3 text-gray-400"
+                  size={18}
+                />
                 <input
                   type="email"
                   className="w-full pl-10 py-2 border rounded-lg"
@@ -193,9 +196,7 @@ const Signup = () => {
 
                 {/* MOBILE */}
                 <div>
-                  <label className="text-sm font-medium">
-                    Mobile Number *
-                  </label>
+                  <label className="text-sm font-medium">Mobile Number *</label>
                   <input
                     type="tel"
                     maxLength={10}
@@ -256,6 +257,13 @@ const Signup = () => {
               </>
             )}
           </form>
+
+          <p className="text-center text-gray-500 mt-8">
+            Already have an account?{" "}
+            <Link to="/login" className="text-yellow-600 font-semibold">
+              Sign in
+            </Link>
+          </p>
         </div>
       </div>
     </div>

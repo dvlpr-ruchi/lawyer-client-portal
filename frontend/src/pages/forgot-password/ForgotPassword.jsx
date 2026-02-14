@@ -24,7 +24,7 @@ const ForgotPassword = () => {
 
     try {
       setLoading(true);
-      const res = await api.post("/app/v1/user/auth/forgot", { email });
+      const res = await api.post("/api/v1/user/auth/forgot", { email });
       alert(res.data.message || "OTP sent to email");
       setStep(2);
     } catch (err) {
@@ -45,7 +45,7 @@ const ForgotPassword = () => {
 
     try {
       setLoading(true);
-      const res = await api.post("/app/v1/user/auth/forgot/verify", { email, otp });
+      const res = await api.post("/api/v1/user/auth/forgot/verify", { email, otp });
       alert(res.data.message || "OTP verified");
       setStep(3);
     } catch (err) {
@@ -71,7 +71,7 @@ const ForgotPassword = () => {
 
     try {
       setLoading(true);
-      const res = await api.post("/app/v1/user/auth/forgot/pass", {
+      const res = await api.post("/api/v1/user/auth/forgot/pass", {
         email,
         password: newPassword,
       });

@@ -324,7 +324,7 @@ const HomePage = () => {
                   <p className="text-gray-600 mb-4 text-sm">
                     {type.description}
                   </p>
-                  <p className="text-yellow-600 font-bold">{type.price}</p>
+                  {/* <p className="text-yellow-600 font-bold">{type.price}</p> */}
                 </div>
               );
             })}

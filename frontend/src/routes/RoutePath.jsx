@@ -7,6 +7,7 @@ import DashboardPanel from "../components/dashboard/DashboardPanel";
 import FindLawyer from "../components/laywer/FindLawyer";
 import Profile from "../pages/profile/ProfileManagement"
 import HomePage from "../pages/home/HomePage"
+import AllLawyers from "../components/lawyers/AllLawyers";
 
 
 const RoutePath = () => {
@@ -18,6 +19,7 @@ const RoutePath = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/find-lawyer" element={<FindLawyer />} />
+      <Route path="/all-lawyers" element={<AllLawyers />} />
       <Route path="/profile" element={<Profile />} />
     </Routes>
   );

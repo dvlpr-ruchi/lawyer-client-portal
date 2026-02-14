@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Scale, ArrowLeft, Phone, Mail } from "lucide-react";
 import api from "../../network/api";
+import { GoogleLogin } from "@react-oauth/google";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ const Login = () => {
     setError("");
 
     try {
-      const res = await api.post("/app/v1/user/auth/login", {
+      const res = await api.post("/api/v1/user/auth/login", {
         email,
         password,
       });
@@ -45,6 +46,20 @@ const Login = () => {
       setLoading(false);
     }
   };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+  try {
+    const res = await api.post("/api/v1/user/auth/googleLogin", {
+      code: credentialResponse.code,
+    });
+
+    if (res.data.success) {
+      navigate("/");
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};
 
   // ================= OTP UI ONLY (NO API YET) =================
   const handleSendOtp = () => {
@@ -198,6 +213,7 @@ const Login = () => {
               Sign up
             </Link>
           </p>
+
 
         </div>
       </div>
