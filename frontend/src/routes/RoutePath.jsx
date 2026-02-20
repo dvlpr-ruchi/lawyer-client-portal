@@ -8,6 +8,9 @@ import FindLawyer from "../components/laywer/FindLawyer";
 import Profile from "../pages/profile/ProfileManagement"
 import HomePage from "../pages/home/HomePage"
 import AllLawyers from "../components/lawyers/AllLawyers";
+import UploadDocuments from "../pages/upload/UploadDocuments";
+import Notifications from "../pages/notifications/Notifications";
+import About from "../pages/about/About";
 
 
 const RoutePath = () => {
@@ -21,6 +24,9 @@ const RoutePath = () => {
       <Route path="/find-lawyer" element={<FindLawyer />} />
       <Route path="/all-lawyers" element={<AllLawyers />} />
       <Route path="/profile" element={<Profile />} />
+      <Route path="/upload-documents" element={<UploadDocuments />} />
+      <Route path="/notifications" element={<Notifications />} />
+      <Route path="/about" element={<About />} />
     </Routes>
   );
 };
