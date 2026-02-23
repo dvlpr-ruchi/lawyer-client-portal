@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { loadStripe } from "@stripe/stripe-js";
 import {
   X,
   FileText,
-  CreditCard,
   MessageSquare,
   Send,
   ChevronRight,
@@ -12,6 +12,8 @@ import {
   Scale,
 } from "lucide-react";
 import api from "../../../network/api";
+
+const stripePromise = loadStripe("YOUR_PUBLISHABLE_KEY");
 
 /* ─── Modal Overlay ─────────────────────────────────────── */
 const Modal = ({ open, onClose, children }) => {
@@ -51,20 +53,16 @@ const Field = ({ label, required, children }) => (
 const inputCls =
   "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-gray-100 placeholder-gray-600 outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500/30 transition-all duration-200";
 
-/* ─── Step Badge ─────────────────────────────────────────── */
-const StepBadge = ({ n }) => (
-  <span className="text-xs font-bold uppercase tracking-widest text-yellow-500 border border-yellow-500/30 px-2 py-0.5 rounded-full">
-    Step {n}
-  </span>
-);
-
 /* ════════════════════════════════════════════════════════════
    MAIN COMPONENT
 ════════════════════════════════════════════════════════════ */
 const FirTab = () => {
   const [modalOpen, setModalOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
+
+  // Single unified loading state for the entire submit+pay flow
+  const [submitting, setSubmitting] = useState(false);
+  const [submitStep, setSubmitStep] = useState(""); // "draft" | "payment" | ""
+
   const [requestId, setRequestId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
@@ -93,74 +91,59 @@ const FirTab = () => {
   }, []);
 
   useEffect(() => {
-    if (requestId) {
-      localStorage.setItem("activeFirId", requestId);
-    }
+    if (requestId) localStorage.setItem("activeFirId", requestId);
   }, [requestId]);
 
-  /* ── Handlers ── */
-  const handleCreateDraft = async (e) => {
+  /* ── Single handler: create draft silently → open Stripe ── */
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setSubmitting(true);
 
     try {
+      // Step 1: silently create the draft (user sees "Processing…")
+      setSubmitStep("draft");
       const fd = new FormData();
-      Object.entries(form).forEach(([k, v]) => {
-        fd.append(k, v);
-      });
+      Object.entries(form).forEach(([k, v]) => fd.append(k, v));
 
-      const res = await api.post("api/v1/fir/draft", fd);
-
-      console.log("Draft creation response:", res.data);
-
-      // 🔥 GET ID FROM BACKEND RESPONSE
-      const createdId = res.data.draftId;
-
-      // 🔥 STORE IT
+      const draftRes = await api.post("api/v1/fir/draft", fd);
+      const createdId = draftRes.data.draftId;
       setRequestId(createdId);
+      localStorage.setItem("activeFirId", createdId);
 
-      setSuccess(true);
-
-      setTimeout(() => {
-        setSuccess(false);
-        setModalOpen(false);
-      }, 2000);
-    } catch (err) {
-      alert(err.response?.data?.message || "Failed to create draft");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePayment = async () => {
-    if (!requestId) {
-      alert("Create draft first");
-      return;
-    }
-
-    try {
-      const res = await api.post("api/v1/fir/payment", {
-       draftId: requestId,
+      // Step 2: immediately call payment API
+      setSubmitStep("payment");
+      const payRes = await api.post("api/v1/fir/payment", {
+        draftId: createdId,
       });
 
-      window.location.href = res.data.url;
+      // Step 3: redirect to Stripe Checkout URL returned by backend
+      window.location.href = payRes.data.url;
+
+      // ── If you prefer Stripe.js embedded checkout instead of redirect ──
+      // const stripe = await stripePromise;
+      // await stripe.redirectToCheckout({ sessionId: payRes.data.sessionId });
     } catch (err) {
-      alert("Payment failed");
+      alert(
+        err.response?.data?.message ||
+          (submitStep === "draft"
+            ? "Failed to create FIR. Please try again."
+            : "Payment initiation failed. Please try again.")
+      );
+      setSubmitting(false);
+      setSubmitStep("");
     }
   };
 
+  /* ── Messages ── */
   const fetchMessages = async () => {
     if (!requestId) {
-      alert("Create draft first");
+      alert("No active FIR found.");
       return;
     }
-
     setMsgLoading(true);
-
     try {
       const res = await api.get(`api/v1/fir/${requestId}/messages`);
-
-      setMessages(res.data.data);
+      setMessages(res.data.data || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -169,25 +152,25 @@ const FirTab = () => {
   };
 
   const sendMessage = async () => {
-    if (!requestId) {
-      alert("Create draft first");
-      return;
-    }
-
+    if (!requestId) { alert("No active FIR found."); return; }
     if (!newMessage.trim()) return;
-
     try {
       const fd = new FormData();
       fd.append("message", newMessage);
-
       await api.post(`api/v1/fir/${requestId}/user/message`, fd);
-
       setNewMessage("");
       fetchMessages();
     } catch (err) {
       console.error(err);
     }
   };
+
+  const loadingLabel =
+    submitStep === "draft"
+      ? "Preparing your FIR…"
+      : submitStep === "payment"
+      ? "Opening secure payment…"
+      : "Processing…";
 
   return (
     <div className="min-h-screen bg-black text-white px-4 py-8">
@@ -207,17 +190,14 @@ const FirTab = () => {
       </div>
 
       <div className="max-w-2xl mx-auto flex flex-col gap-4">
-        {/* ══ Card 1 — Create Draft ══ */}
+        {/* ══ Card 1 — File FIR (single action, no mention of "draft") ══ */}
         <div className="rounded-2xl bg-neutral-950 border border-white/8 p-6 hover:border-yellow-600/30 transition-colors duration-300">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <StepBadge n="01" />
-              <h3 className="mt-2.5 text-lg font-bold text-white">
-                Create FIR Draft
-              </h3>
+              <h3 className="text-lg font-bold text-white">File an FIR</h3>
               <p className="mt-1 text-sm text-gray-500 leading-relaxed">
-                Fill complainant details, describe the incident and accept legal
-                declarations to generate your draft.
+                Fill in the incident details and proceed to secure payment to
+                submit your First Information Report.
               </p>
             </div>
             <button
@@ -225,40 +205,19 @@ const FirTab = () => {
               className="flex-shrink-0 flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-bold px-5 py-2.5 rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-yellow-500/25 hover:-translate-y-0.5 active:translate-y-0"
             >
               <FileText size={15} />
-              New Draft
+              File FIR
             </button>
           </div>
         </div>
 
-        {/* ══ Card 2 — Payment ══ */}
-        <div className="rounded-2xl bg-neutral-950 border border-white/8 p-6 hover:border-yellow-600/30 transition-colors duration-300">
-          <StepBadge n="02" />
-          <h3 className="mt-2.5 text-lg font-bold text-white mb-4">
-            Complete Payment
-          </h3>
-          <div className="flex gap-3 flex-wrap">
-            <input
-              value={requestId}
-              onChange={(e) => setRequestId(e.target.value)}
-              placeholder="Enter Request ID"
-              className={`${inputCls} flex-1 min-w-44`}
-            />
-            <button
-              onClick={handlePayment}
-              className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-bold px-5 py-2.5 rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-yellow-500/25 hover:-translate-y-0.5 active:translate-y-0 flex-shrink-0"
-            >
-              <CreditCard size={15} />
-              Pay Now
-            </button>
-          </div>
-        </div>
-
-        {/* ══ Card 3 — Messages ══ */}
+        {/* ══ Card 2 — Messages (only visible if an FIR has been filed) ══ */}
         <div className="rounded-2xl bg-neutral-950 border border-white/8 p-6 hover:border-yellow-600/30 transition-colors duration-300">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <StepBadge n="03" />
-              <h3 className="mt-2.5 text-lg font-bold text-white">Messages</h3>
+              <h3 className="text-lg font-bold text-white">Messages</h3>
+              <p className="text-sm text-gray-500 mt-0.5">
+                Communicate regarding your filed FIR
+              </p>
             </div>
             <button
               onClick={fetchMessages}
@@ -274,7 +233,7 @@ const FirTab = () => {
             </button>
           </div>
 
-          {messages.length > 0 && (
+          {Array.isArray(messages) && messages.length > 0 && (
             <div className="flex flex-col gap-2 mb-4 max-h-52 overflow-y-auto pr-1">
               {messages.map((msg, i) => (
                 <div
@@ -306,7 +265,7 @@ const FirTab = () => {
       </div>
 
       {/* ══════════════════════ MODAL ══════════════════════ */}
-      <Modal open={modalOpen} onClose={() => !loading && setModalOpen(false)}>
+      <Modal open={modalOpen} onClose={() => !submitting && setModalOpen(false)}>
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-white/8">
           <div className="flex items-center gap-3">
@@ -315,7 +274,7 @@ const FirTab = () => {
             </div>
             <div>
               <h3 className="text-base font-black text-white tracking-tight">
-                New FIR Draft
+                File an FIR
               </h3>
               <p className="text-xs text-gray-500">
                 All <span className="text-yellow-500">*</span> fields are
@@ -324,30 +283,45 @@ const FirTab = () => {
             </div>
           </div>
           <button
-            onClick={() => !loading && setModalOpen(false)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-gray-500 hover:text-white hover:border-white/20 transition-all duration-200"
+            onClick={() => !submitting && setModalOpen(false)}
+            disabled={submitting}
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-gray-500 hover:text-white hover:border-white/20 transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <X size={15} />
           </button>
         </div>
 
-        {/* ── Success State ── */}
-        {success ? (
-          <div className="px-6 py-16 flex flex-col items-center gap-4 text-center">
-            <div className="w-16 h-16 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center">
-              <CheckCircle2 size={32} className="text-yellow-400" />
+        {/* ── Full-screen loading overlay inside modal ── */}
+        {submitting ? (
+          <div className="px-6 py-20 flex flex-col items-center gap-5 text-center">
+            <div className="relative">
+              <div className="w-16 h-16 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center">
+                <Loader2 size={28} className="text-yellow-400 animate-spin" />
+              </div>
             </div>
             <div>
-              <h4 className="text-xl font-black text-white">Draft Created!</h4>
-              <p className="text-sm text-gray-500 mt-1">
-                Your FIR draft has been saved successfully.
+              <h4 className="text-lg font-black text-white">{loadingLabel}</h4>
+              <p className="text-xs text-gray-500 mt-1.5">
+                Please don't close this window
               </p>
+            </div>
+            {/* Step indicators */}
+            <div className="flex items-center gap-3 mt-2">
+              <div className={`flex items-center gap-1.5 text-xs font-semibold ${submitStep === "draft" ? "text-yellow-400" : submitStep === "payment" ? "text-green-400" : "text-gray-600"}`}>
+                {submitStep === "payment" ? <CheckCircle2 size={12} /> : <div className={`w-2 h-2 rounded-full ${submitStep === "draft" ? "bg-yellow-400 animate-pulse" : "bg-gray-600"}`} />}
+                FIR Details
+              </div>
+              <div className="w-8 h-px bg-white/10" />
+              <div className={`flex items-center gap-1.5 text-xs font-semibold ${submitStep === "payment" ? "text-yellow-400 animate-pulse" : "text-gray-600"}`}>
+                <div className={`w-2 h-2 rounded-full ${submitStep === "payment" ? "bg-yellow-400 animate-pulse" : "bg-gray-600"}`} />
+                Secure Payment
+              </div>
             </div>
           </div>
         ) : (
           /* ── Form ── */
           <form
-            onSubmit={handleCreateDraft}
+            onSubmit={handleSubmit}
             className="px-6 py-5 flex flex-col gap-4"
           >
             {/* Row 1 */}
@@ -473,15 +447,10 @@ const FirTab = () => {
               </button>
               <button
                 type="submit"
-                disabled={loading}
-                className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 disabled:opacity-60 text-black text-sm font-bold px-6 py-2.5 rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-yellow-500/30 hover:-translate-y-0.5 active:translate-y-0"
+                className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-bold px-6 py-2.5 rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-yellow-500/30 hover:-translate-y-0.5 active:translate-y-0"
               >
-                {loading ? (
-                  <Loader2 size={15} className="animate-spin" />
-                ) : (
-                  <ChevronRight size={15} />
-                )}
-                {loading ? "Submitting…" : "Create Draft"}
+                <ChevronRight size={15} />
+                Continue to Payment
               </button>
             </div>
           </form>
