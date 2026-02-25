@@ -1,5 +1,5 @@
 import axios from "axios";
-import Cookies from 'js-cookie';
+import Cookies from "js-cookie";
 
 const api = axios.create({
   baseURL: `${import.meta.env.VITE_BACKEND_BASE_URL}`,
@@ -19,7 +19,7 @@ function setCache(key, data, cacheTime) {
   cache.set(key, {
     data,
     timestamp: Date.now(),
-    timeout: setTimeout(() => cache.delete(key), cacheTime)
+    timeout: setTimeout(() => cache.delete(key), cacheTime),
   });
 }
 
@@ -27,18 +27,23 @@ function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function retryRequest(error, originalRequest, baseDelay = 200, maxRetries = 3) {
+async function retryRequest(
+  error,
+  originalRequest,
+  baseDelay = 200,
+  maxRetries = 3,
+) {
   if (!originalRequest) return Promise.reject(error);
-  
+
   originalRequest._retrying = originalRequest._retrying || 0;
-  
+
   if (originalRequest._retrying >= maxRetries) {
     return Promise.reject(error);
   }
-  
+
   originalRequest._retrying += 1;
   const delay = baseDelay * Math.pow(2, originalRequest._retrying - 1);
-  
+
   await wait(delay);
   return api(originalRequest);
 }
@@ -48,33 +53,39 @@ let isRefreshing = false;
 let failedQueue = [];
 
 const processQueue = (error, token = null) => {
-  failedQueue.forEach(prom => {
+  failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
     } else {
       prom.resolve(token);
     }
   });
-  
+
   failedQueue = [];
 };
 
 // REQUEST INTERCEPTOR
 api.interceptors.request.use(
   (config) => {
-    // ✅ Only set Content-Type if it's not FormData
-    if (!config.headers['Content-Type']) {
-      if (!(config.data instanceof FormData)) {
-        config.headers['Content-Type'] = 'application/json';
-      }
-      // If it's FormData, browser will set multipart/form-data automatically
+    // ✅ Attach token (IMPORTANT FIX)
+    const token = localStorage.getItem("token"); // or wherever you store it
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
+    // ✅ Content-Type logic
+    if (!config.headers["Content-Type"]) {
+      if (!(config.data instanceof FormData)) {
+        config.headers["Content-Type"] = "application/json";
+      }
+    }
+
     return config;
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // RESPONSE INTERCEPTOR
@@ -86,7 +97,7 @@ api.interceptors.response.use(
     if (!error || !error.config) {
       return Promise.reject(error);
     }
-    
+
     const originalRequest = error.config;
     const status = error.response?.status;
 
@@ -100,7 +111,7 @@ api.interceptors.response.use(
           .then(() => {
             return api(originalRequest);
           })
-          .catch(err => {
+          .catch((err) => {
             return Promise.reject(err);
           });
       }
@@ -109,38 +120,37 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        console.log('🔄 Access token expired, refreshing...');
-        
+        console.log("🔄 Access token expired, refreshing...");
+
         // Call refresh endpoint - browser sends refresh token cookie automatically
         const refreshResponse = await axios.post(
-          `http://localhost:3000/api/auth/refresh`,
+          `${import.meta.env.VITE_BACKEND_BASE_URL}/api/auth/refresh`,
           {},
-          { withCredentials: true }
+          { withCredentials: true },
         );
-        
-        console.log('✅ Token refreshed successfully');
-        
+
+        console.log("✅ Token refreshed successfully");
+
         // Process queued requests
         processQueue(null, refreshResponse.data);
-        
+
         // Retry the original request
         return api(originalRequest);
-        
       } catch (refreshError) {
-        console.error('❌ Refresh token failed:', refreshError);
-        
+        console.error("❌ Refresh token failed:", refreshError);
+
         // Process queued requests with error
         processQueue(refreshError, null);
-        
+
         // Clear any client-side tokens
         Cookies.remove("accessToken");
-        
+
         // Only redirect if not already on login page
-        if (!window.location.pathname.includes('/login')) {
-          console.log('🔐 Redirecting to login...');
+        if (!window.location.pathname.includes("/login")) {
+          console.log("🔐 Redirecting to login...");
           window.location.href = "/login";
         }
-        
+
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
@@ -149,7 +159,7 @@ api.interceptors.response.use(
 
     // ✅ Handle 403 Forbidden
     if (status === 403) {
-      console.error('❌ Access forbidden - insufficient permissions');
+      console.error("❌ Access forbidden - insufficient permissions");
     }
 
     // ✅ Retry on server errors or rate limits
@@ -159,13 +169,13 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 // ✅ CACHED GET METHOD
 api.cachedGet = async function (
   url,
-  { staleTime = DEFAULT_STALE_TIME, cacheTime = DEFAULT_CACHE_TIME } = {}
+  { staleTime = DEFAULT_STALE_TIME, cacheTime = DEFAULT_CACHE_TIME } = {},
 ) {
   const cached = cache.get(url);
 
@@ -209,13 +219,15 @@ mutationMethods.forEach((method) => {
     // Find related cached GET requests
     const relatedGetUrl = url.split("?")[0];
     const cachedKeys = Array.from(cache.keys()).filter((key) =>
-      key.includes(relatedGetUrl)
+      key.includes(relatedGetUrl),
     );
 
     // Refresh related caches
     if (cachedKeys.length > 0) {
-      console.log(`🔄 Invalidating ${cachedKeys.length} related cache(s) for: ${relatedGetUrl}`);
-      
+      console.log(
+        `🔄 Invalidating ${cachedKeys.length} related cache(s) for: ${relatedGetUrl}`,
+      );
+
       cachedKeys.forEach(async (key) => {
         try {
           const freshData = await api.get(key);
@@ -241,15 +253,15 @@ api.clearCache = () => {
     }
   });
   cache.clear();
-  console.log('🗑️ All cache cleared');
+  console.log("🗑️ All cache cleared");
 };
 
 // ✅ UTILITY: Clear specific cache by URL pattern
 api.clearCacheByPattern = (pattern) => {
   const keysToDelete = Array.from(cache.keys()).filter((key) =>
-    key.includes(pattern)
+    key.includes(pattern),
   );
-  
+
   keysToDelete.forEach((key) => {
     const value = cache.get(key);
     if (value?.timeout) {
@@ -257,8 +269,10 @@ api.clearCacheByPattern = (pattern) => {
     }
     cache.delete(key);
   });
-  
-  console.log(`🗑️ Cleared ${keysToDelete.length} cache entries matching: ${pattern}`);
+
+  console.log(
+    `🗑️ Cleared ${keysToDelete.length} cache entries matching: ${pattern}`,
+  );
 };
 
 // ✅ UTILITY: Get cache stats

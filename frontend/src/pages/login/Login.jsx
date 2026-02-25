@@ -241,6 +241,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Scale, ArrowLeft } from "lucide-react";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 import api from "../../network/api";
 
 const Login = () => {
@@ -248,7 +249,7 @@ const Login = () => {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -331,14 +332,24 @@ const Login = () => {
             />
 
             {/* PASSWORD */}
-            <div>
+            <div className="relative">
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full border rounded-lg px-4 py-3"
+                className="w-full border rounded-lg px-4 py-3 pr-12"
                 placeholder="Enter password"
               />
+
+              {/* Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-5  cursor-pointer text-gray-500"
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+
               <div className="text-right mt-2">
                 <Link
                   to="/forgot-password"
