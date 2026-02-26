@@ -91,7 +91,7 @@ const ProfileManagement = () => {
         formData.append("image", imageFile);
       }
 
-      await api.put("/app/v1/user/profile", formData, {
+      await api.put("/api/v1/user/profile", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -345,7 +345,7 @@ const ProfileManagement = () => {
               </div>
 
               {/* LOCATION INFORMATION */}
-              <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-6 sm:p-8">
+              {/* <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-6 sm:p-8">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="p-2 bg-yellow-100 rounded-lg">
                     <MapPin className="text-yellow-600" size={20} />
@@ -428,7 +428,7 @@ const ProfileManagement = () => {
                     />
                   </div>
                 </div>
-              </div>
+              </div> */}
 
               {/* SAVE BUTTON */}
               {isEditing && (

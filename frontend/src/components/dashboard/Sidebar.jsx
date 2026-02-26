@@ -83,9 +83,9 @@ const Sidebar = ({ selectedTab, setSelectedTab }) => {
               >
                 Legal<span style={{ color: "#c9922a" }}>Ease</span>
               </div>
-              <div style={{ fontSize: "0.68rem", color: "#4a4540", marginTop: "2px", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              {/* <div style={{ fontSize: "0.68rem", color: "#4a4540", marginTop: "2px", letterSpacing: "0.08em", textTransform: "uppercase" }}>
                 Control Panel
-              </div>
+              </div> */}
             </div>
           )}
         </div>

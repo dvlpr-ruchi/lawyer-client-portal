@@ -11,6 +11,8 @@ import AllLawyers from "../components/lawyers/AllLawyers";
 import UploadDocuments from "../pages/upload/UploadDocuments";
 import Notifications from "../pages/notifications/Notifications";
 import About from "../pages/about/About";
+import Terms from "../pages/terms&conditions/Terms"
+import FAQ from "../pages/FAQ/FAQ";
 
 
 const RoutePath = () => {
@@ -27,6 +29,8 @@ const RoutePath = () => {
       <Route path="/upload-documents" element={<UploadDocuments />} />
       <Route path="/notifications" element={<Notifications />} />
       <Route path="/about" element={<About />} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/faq" element={<FAQ />} />
     </Routes>
   );
 };

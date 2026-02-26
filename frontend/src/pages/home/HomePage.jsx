@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../../components/layout/Navbar";
 import Footer from "../../components/layout/Footer";
+import FAQ from "../FAQ/FAQ"
 
 import {
   Scale,
@@ -561,6 +562,10 @@ const HomePage = () => {
           </div>
         </div>
       </section>
+
+      {/* FAQ Section */}
+
+      <FAQ />
 
       {/* CTA Section */}
       <section className="py-20 bg-gradient-to-r from-yellow-500 to-yellow-600">
