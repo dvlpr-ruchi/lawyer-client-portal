@@ -7,6 +7,7 @@ import {
   ChevronDown,
   User,
   FileText,
+  LayoutDashboard,
   Settings,
   LogOut,
   BookOpen,
@@ -223,8 +224,8 @@ const UserMenu = ({ user, onLogout }) => {
           {/* Menu Items */}
           <div style={{ padding: "8px" }}>
             <MenuItem icon={<User size={15} />} label="My Profile" to="/profile" onClick={() => setOpen(false)} />
-            {/* <MenuItem icon={<FileText size={15} />} label="My Cases" to="/cases" onClick={() => setOpen(false)} />
-            <MenuItem icon={<BookOpen size={15} />} label="Consultations" to="/consultations" onClick={() => setOpen(false)} />
+            <MenuItem icon={<LayoutDashboard size={15} />} label="Dashboard" to="/dashboard" onClick={() => setOpen(false)} />
+          {/*   <MenuItem icon={<BookOpen size={15} />} label="Consultations" to="/consultations" onClick={() => setOpen(false)} />
             <MenuItem icon={<Settings size={15} />} label="Settings" to="/settings" onClick={() => setOpen(false)} /> */}
           </div>
 

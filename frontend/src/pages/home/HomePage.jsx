@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../../components/layout/Navbar";
 import Footer from "../../components/layout/Footer";
-import FAQ from "../FAQ/FAQ"
+import FAQ from "../FAQ/FAQ";
 
 import {
   Scale,
@@ -503,6 +503,16 @@ const HomePage = () => {
               );
             })}
           </div>
+        </div>
+
+        <div className="text-center mt-12">
+          <Link
+            to="/how-it-works"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl hover:bg-gray-800 font-semibold transition-colors"
+          >
+            View Full Process
+            <ArrowRight className="w-5 h-5" />
+          </Link>
         </div>
       </section>
 

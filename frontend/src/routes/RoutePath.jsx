@@ -13,6 +13,8 @@ import Notifications from "../pages/notifications/Notifications";
 import About from "../pages/about/About";
 import Terms from "../pages/terms&conditions/Terms"
 import FAQ from "../pages/FAQ/FAQ";
+import HowItWorks from "../pages/how-it-works/howITWorks";
+import CreateCase from "../pages/case/CreateCase"
 
 
 const RoutePath = () => {
@@ -31,6 +33,8 @@ const RoutePath = () => {
       <Route path="/about" element={<About />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/faq" element={<FAQ />} />
+      <Route path="/how-it-works" element={<HowItWorks />} />
+      <Route path="/create-case" element={<CreateCase />} />
     </Routes>
   );
 };
